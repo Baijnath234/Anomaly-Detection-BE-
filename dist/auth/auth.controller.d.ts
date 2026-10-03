@@ -5,7 +5,11 @@ export declare class AuthController {
     login(loginDto: any): Promise<{
         access_token: string;
     }>;
-    register(registerDto: any): Promise<import("../users/user.entity").User>;
+    register(registerDto: any): Promise<{
+        id: number;
+        email: string;
+        password: string;
+    }>;
     forgotPassword(forgotPasswordDto: any): Promise<{
         message: string;
     }>;

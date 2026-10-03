@@ -13,20 +13,24 @@ const config_1 = require("@nestjs/config");
 const users_module_1 = require("./users/users.module");
 const auth_module_1 = require("./auth/auth.module");
 const model_training_module_1 = require("./Model/model-training.module");
+const app_controller_1 = require("./app.controller");
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;
 exports.AppModule = AppModule = __decorate([
     (0, common_1.Module)({
         imports: [
-            config_1.ConfigModule.forRoot({ isGlobal: true }),
+            config_1.ConfigModule.forRoot({
+                isGlobal: true,
+                envFilePath: '.env',
+            }),
             typeorm_1.TypeOrmModule.forRoot({
                 type: 'postgres',
-                host: process.env.DB_HOST,
+                host: process.env.DB_HOST || 'localhost',
                 port: parseInt(process.env.DB_PORT || '5432', 10),
-                username: process.env.DB_USERNAME,
-                password: process.env.DB_PASSWORD,
-                database: process.env.DB_NAME,
+                username: process.env.DB_USERNAME || 'postgres',
+                password: String(process.env.DB_PASSWORD || 'postgres'),
+                database: process.env.DB_NAME || 'anomaly_detection',
                 entities: [__dirname + '/**/*.entity{.ts,.js}'],
                 synchronize: true,
                 logging: true,
@@ -35,6 +39,7 @@ exports.AppModule = AppModule = __decorate([
             auth_module_1.AuthModule,
             model_training_module_1.ModelTrainingModule,
         ],
+        controllers: [app_controller_1.AppController],
     })
 ], AppModule);
 //# sourceMappingURL=app.module.js.map

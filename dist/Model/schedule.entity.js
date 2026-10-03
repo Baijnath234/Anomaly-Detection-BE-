@@ -20,19 +20,16 @@ __decorate([
     __metadata("design:type", Number)
 ], Schedule.prototype, "id", void 0);
 __decorate([
-    (0, typeorm_1.Column)('date', { nullable: true }),
+    (0, typeorm_1.Column)({ nullable: true }),
     __metadata("design:type", String)
-], Schedule.prototype, "startDate", void 0);
+], Schedule.prototype, "cronExpression", void 0);
 __decorate([
-    (0, typeorm_1.Column)('date', { nullable: true }),
+    (0, typeorm_1.Column)({ nullable: true }),
     __metadata("design:type", String)
-], Schedule.prototype, "endDate", void 0);
+], Schedule.prototype, "description", void 0);
 __decorate([
-    (0, typeorm_1.Column)("simple-array", { nullable: true }),
-    __metadata("design:type", Array)
-], Schedule.prototype, "PIDs", void 0);
-__decorate([
-    (0, typeorm_1.ManyToOne)(() => model_training_entity_1.ModelTraining, modelTraining => modelTraining.schedules),
+    (0, typeorm_1.ManyToOne)(() => model_training_entity_1.ModelTraining, (modelTraining) => modelTraining.schedules, { onDelete: 'CASCADE' }),
+    (0, typeorm_1.JoinColumn)({ name: 'modelTrainingId' }),
     __metadata("design:type", model_training_entity_1.ModelTraining)
 ], Schedule.prototype, "modelTraining", void 0);
 exports.Schedule = Schedule = __decorate([

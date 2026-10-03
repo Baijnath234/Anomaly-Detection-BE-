@@ -22,53 +22,14 @@ __decorate([
 __decorate([
     (0, typeorm_1.Column)({ nullable: true }),
     __metadata("design:type", String)
-], PID.prototype, "type", void 0);
+], PID.prototype, "pid", void 0);
 __decorate([
     (0, typeorm_1.Column)({ nullable: true }),
-    __metadata("design:type", Number)
-], PID.prototype, "trainCount", void 0);
+    __metadata("design:type", String)
+], PID.prototype, "name", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ nullable: true }),
-    __metadata("design:type", Number)
-], PID.prototype, "trainMean", void 0);
-__decorate([
-    (0, typeorm_1.Column)({ nullable: true }),
-    __metadata("design:type", Number)
-], PID.prototype, "trainStd", void 0);
-__decorate([
-    (0, typeorm_1.Column)({ nullable: true }),
-    __metadata("design:type", Number)
-], PID.prototype, "trainMin", void 0);
-__decorate([
-    (0, typeorm_1.Column)({ nullable: true }),
-    __metadata("design:type", Number)
-], PID.prototype, "trainMax", void 0);
-__decorate([
-    (0, typeorm_1.Column)({ nullable: true }),
-    __metadata("design:type", Number)
-], PID.prototype, "train25Perc", void 0);
-__decorate([
-    (0, typeorm_1.Column)({ nullable: true }),
-    __metadata("design:type", Number)
-], PID.prototype, "train50Perc", void 0);
-__decorate([
-    (0, typeorm_1.Column)({ nullable: true }),
-    __metadata("design:type", Number)
-], PID.prototype, "train75Perc", void 0);
-__decorate([
-    (0, typeorm_1.Column)({ nullable: true }),
-    __metadata("design:type", Boolean)
-], PID.prototype, "isOutput", void 0);
-__decorate([
-    (0, typeorm_1.Column)({ nullable: true }),
-    __metadata("design:type", Boolean)
-], PID.prototype, "isMonitor", void 0);
-__decorate([
-    (0, typeorm_1.Column)({ nullable: true }),
-    __metadata("design:type", Boolean)
-], PID.prototype, "included", void 0);
-__decorate([
-    (0, typeorm_1.ManyToOne)(() => model_training_entity_1.ModelTraining, modelTraining => modelTraining.pids),
+    (0, typeorm_1.ManyToOne)(() => model_training_entity_1.ModelTraining, (modelTraining) => modelTraining.pids, { onDelete: 'CASCADE' }),
+    (0, typeorm_1.JoinColumn)({ name: 'modelTrainingId' }),
     __metadata("design:type", model_training_entity_1.ModelTraining)
 ], PID.prototype, "modelTraining", void 0);
 exports.PID = PID = __decorate([

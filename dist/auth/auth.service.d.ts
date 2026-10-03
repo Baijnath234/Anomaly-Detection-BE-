@@ -8,7 +8,11 @@ export declare class AuthService {
     login(user: any): Promise<{
         access_token: string;
     }>;
-    register(email: string, password: string): Promise<import("../users/user.entity").User>;
+    register(email: string, password: string): Promise<{
+        id: number;
+        email: string;
+        password: string;
+    }>;
     forgotPassword(email: string): Promise<{
         message: string;
     }>;
