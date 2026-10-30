@@ -1,9 +1,9 @@
-import { IDetector, DetectorResult } from './detector.interface';
+import { Detector, DetectionResult } from './detector.interface';
 import * as tf from '@tensorflow/tfjs';
 import * as fs from 'fs';
 import * as path from 'path';
 
-export class AutoencoderDetector implements IDetector {
+export class AutoencoderDetector implements Detector {
   public name = 'autoencoder';
   private model: tf.LayersModel | null = null;
   private inputDim: number = 0;
@@ -57,7 +57,7 @@ export class AutoencoderDetector implements IDetector {
     this.thresholdError = sorted[qIndex] || 0.1;
   }
 
-  async predict(X: number[][]): Promise<DetectorResult> {
+  async predict(X: number[][]): Promise<DetectionResult> {
     if (!this.model || !X.length) {
       return {
         flags: new Array(X.length).fill(false),

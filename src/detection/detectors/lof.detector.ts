@@ -1,6 +1,6 @@
-import { IDetector, DetectorResult } from './detector.interface';
+import { Detector, DetectionResult } from './detector.interface';
 
-export class LofDetector implements IDetector {
+export class LofDetector implements Detector {
   public name = 'lof';
   private trainX: number[][] = [];
   private k: number = 10;
@@ -24,7 +24,7 @@ export class LofDetector implements IDetector {
     this.thresholdScore = 0.75 - this.sensitivity * 0.3;
   }
 
-  predict(X: number[][]): DetectorResult {
+  predict(X: number[][]): DetectionResult {
     const scores: number[] = [];
     const flags: boolean[] = [];
 

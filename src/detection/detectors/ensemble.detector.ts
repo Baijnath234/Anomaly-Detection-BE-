@@ -1,12 +1,12 @@
-import { IDetector, DetectorResult } from './detector.interface';
+import { Detector, DetectionResult } from './detector.interface';
 import { ZScoreDetector } from './zscore.detector';
 import { IsolationForestDetector } from './isolation-forest.detector';
 import { LofDetector } from './lof.detector';
 import { OcsvmLiteDetector } from './ocsvm-lite.detector';
 
-export class EnsembleDetector implements IDetector {
+export class EnsembleDetector implements Detector {
   public name = 'ensemble';
-  private detectors: IDetector[] = [];
+  private detectors: Detector[] = [];
   private weights: number[] = [];
   private threshold: number = 0.55;
 
@@ -29,12 +29,12 @@ export class EnsembleDetector implements IDetector {
     this.threshold = 0.65 - sensitivity * 0.2;
   }
 
-  async predict(X: number[][]): Promise<DetectorResult> {
+  async predict(X: number[][]): Promise<DetectionResult> {
     if (!X.length) {
       return { flags: [], scores: [], threshold: this.threshold };
     }
 
-    const allResults: DetectorResult[] = [];
+    const allResults: DetectionResult[] = [];
     for (const detector of this.detectors) {
       allResults.push(await detector.predict(X));
     }

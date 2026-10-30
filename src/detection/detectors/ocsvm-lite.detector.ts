@@ -1,6 +1,6 @@
-import { IDetector, DetectorResult } from './detector.interface';
+import { Detector, DetectionResult } from './detector.interface';
 
-export class OcsvmLiteDetector implements IDetector {
+export class OcsvmLiteDetector implements Detector {
   public name = 'ocsvm';
   private supportVectors: number[][] = [];
   private gamma: number = 0.5;
@@ -34,7 +34,7 @@ export class OcsvmLiteDetector implements IDetector {
     this.gamma = 1.0 / (numCols || 1.0);
   }
 
-  predict(X: number[][]): DetectorResult {
+  predict(X: number[][]): DetectionResult {
     const scores: number[] = [];
     const flags: boolean[] = [];
 

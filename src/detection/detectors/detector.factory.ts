@@ -1,5 +1,5 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
-import { IDetector } from './detector.interface';
+import { Detector } from './detector.interface';
 import { ZScoreDetector } from './zscore.detector';
 import { IsolationForestDetector } from './isolation-forest.detector';
 import { LofDetector } from './lof.detector';
@@ -10,7 +10,7 @@ import { EnsembleDetector } from './ensemble.detector';
 
 @Injectable()
 export class DetectorFactory {
-  create(method: string): IDetector {
+  create(method: string): Detector {
     const normalized = (method || '').toLowerCase().trim();
     switch (normalized) {
       case 'zscore':

@@ -1,4 +1,4 @@
-import { IDetector, DetectorResult } from './detector.interface';
+import { Detector, DetectionResult } from './detector.interface';
 
 interface ITreeNode {
   isLeaf: boolean;
@@ -9,7 +9,7 @@ interface ITreeNode {
   right?: ITreeNode;
 }
 
-export class IsolationForestDetector implements IDetector {
+export class IsolationForestDetector implements Detector {
   public name = 'isolation_forest';
   private trees: ITreeNode[] = [];
   private numTrees: number = 50;
@@ -92,7 +92,7 @@ export class IsolationForestDetector implements IDetector {
     }
   }
 
-  predict(X: number[][]): DetectorResult {
+  predict(X: number[][]): DetectionResult {
     const scores: number[] = [];
     const flags: boolean[] = [];
     const cN = this.averagePathLength(this.subSampleSize);

@@ -1,7 +1,7 @@
-import { IDetector, DetectorResult } from './detector.interface';
+import { Detector, DetectionResult } from './detector.interface';
 import * as ss from 'simple-statistics';
 
-export class ZScoreDetector implements IDetector {
+export class ZScoreDetector implements Detector {
   public name = 'zscore';
   private means: number[] = [];
   private stds: number[] = [];
@@ -27,7 +27,7 @@ export class ZScoreDetector implements IDetector {
     }
   }
 
-  predict(X: number[][]): DetectorResult {
+  predict(X: number[][]): DetectionResult {
     const scores: number[] = [];
     const flags: boolean[] = [];
 
