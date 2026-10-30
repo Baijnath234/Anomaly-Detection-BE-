@@ -5,6 +5,8 @@ import { RulResult } from './entities/rul-result.entity';
 import { Dataset } from '../datasets/entities/dataset.entity';
 import { MetricRow } from '../datasets/entities/metric-row.entity';
 import * as ss from 'simple-statistics';
+import { estimateRul } from './rul-estimator';
+export * from './rul-estimator';
 
 export interface RulEstimationOutput {
   id: string;
@@ -100,41 +102,24 @@ export class RulService {
     const avgStepDays =
       totalObservedDays > 0 ? totalObservedDays / (rows.length - 1) : 1;
 
-    // Linear regression on log(HI) for exponential degradation: ln(HI) = m * t + c
-    const points: [number, number][] = timeDays.map((t, idx) => [
-      t,
-      Math.log(healthScores[idx]),
-    ]);
+    const currentT = timeDays[timeDays.length - 1];
+    const currentHI = healthScores[healthScores.length - 1];
 
-    const regression = ss.linearRegression(points);
-    const slope = regression.m; // Expected to be negative as equipment degrades
-    const intercept = regression.b;
+    // Normalize failureThreshold to 0..100 if given as 0..1
+    const threshold100 = failureThreshold <= 1.0 ? failureThreshold * 100 : failureThreshold;
+    const trendPoints = timeDays.map((t, idx) => ({ t, h: healthScores[idx] * 100 }));
+    const trendEstimate = estimateRul(trendPoints, threshold100);
 
     let etaDays: number;
     let lowerDays: number;
     let upperDays: number;
 
-    const currentT = timeDays[timeDays.length - 1];
-    const currentHI = healthScores[healthScores.length - 1];
-
-    if (slope < -1e-5) {
-      // Time when ln(HI) reaches ln(failureThreshold): t_fail = (ln(failureThreshold) - intercept) / slope
-      const tFail = (Math.log(failureThreshold) - intercept) / slope;
-      const rawEta = Math.max(0.5, tFail - currentT);
-
-      // Compute standard error of regression to form confidence band
-      const residuals = points.map(([t, logHI]) => logHI - (slope * t + intercept));
-      const residualStd = ss.standardDeviation(residuals);
-
-      // 90% confidence interval width
-      const deltaT = Math.abs(residualStd / slope) * 1.645;
-
-      etaDays = parseFloat(rawEta.toFixed(1));
-      lowerDays = parseFloat(Math.max(0.2, rawEta - deltaT).toFixed(1));
-      upperDays = parseFloat((rawEta + deltaT).toFixed(1));
+    if (trendEstimate && trendEstimate.etaDays > 0) {
+      etaDays = parseFloat(Math.max(0.5, trendEstimate.etaDays).toFixed(1));
+      lowerDays = parseFloat(Math.max(0.1, trendEstimate.lowerDays).toFixed(1));
+      upperDays = parseFloat(Math.max(etaDays, trendEstimate.upperDays).toFixed(1));
     } else {
-      // Slope is non-negative (system is stable and not showing noticeable degradation)
-      // Provide healthy long-term baseline projection
+      // System is not actively degrading; provide healthy baseline
       etaDays = parseFloat((totalObservedDays * 5 + 180).toFixed(1));
       lowerDays = parseFloat((etaDays * 0.75).toFixed(1));
       upperDays = parseFloat((etaDays * 1.35).toFixed(1));
