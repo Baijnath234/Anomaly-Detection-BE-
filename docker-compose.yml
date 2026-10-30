@@ -1,0 +1,74 @@
+version: '3.8'
+
+services:
+  # 1. PostgreSQL Database
+  postgres:
+    image: postgres:16-alpine
+    container_name: anomaly_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${DB_USERNAME:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
+      POSTGRES_DB: ${DB_NAME:-anomaly_detection}
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME:-postgres} -d ${DB_NAME:-anomaly_detection}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # 2. Redis for BullMQ Job Queues
+  redis:
+    image: redis:7-alpine
+    container_name: anomaly_redis
+    restart: unless-stopped
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # 3. NestJS Backend API
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: anomaly_platform_api
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USERNAME: ${DB_USERNAME:-postgres}
+      DB_PASSWORD: ${DB_PASSWORD:-postgres}
+      DB_NAME: ${DB_NAME:-anomaly_detection}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      MODEL_STORAGE_PATH: ./storage/models
+    ports:
+      - "3000:3000"
+    volumes:
+      - models_storage:/usr/src/app/storage/models
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  models_storage:
+    driver: local
+

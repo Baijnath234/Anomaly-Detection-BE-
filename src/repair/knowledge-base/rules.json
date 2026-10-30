@@ -1,0 +1,98 @@
+[
+  {
+    "id": "RULE-VIB-001",
+    "triggerMetric": "vibration",
+    "systemType": "any",
+    "problem": "Severe Mechanical Imbalance & Bearing Degradation",
+    "severity": "Critical",
+    "rootCause": "Excessive high-frequency radial vibration indicating impending mechanical bearing failure or rotor imbalance.",
+    "orderedSteps": [
+      "Step 1: Safely throttle down or shut down the unit to avoid catastrophic bearing seizure.",
+      "Step 2: Inspect outer bearing casing for localized hotspots and perform acoustic emission check.",
+      "Step 3: Check dynamic rotor alignment using laser dial indicators; verify balance weights.",
+      "Step 4: Inspect bearing raceways and rolling elements for micro-pitting or spalling; replace if defect depth exceeds 0.2mm.",
+      "Step 5: Flush lubrication reservoir, check oil ISO cleanliness code (ISO 4406), and replenish with manufacturer-specified grade."
+    ],
+    "safetyPrecaution": "Lock-out/tag-out (LOTO) electrical and pneumatic supplies before disassembling rotating assemblies."
+  },
+  {
+    "id": "RULE-TEMP-001",
+    "triggerMetric": "temperature",
+    "systemType": "any",
+    "problem": "Thermal Overrun & Cooling System Deficiency",
+    "severity": "Critical",
+    "rootCause": "Operating temperature continuously elevated beyond normal baseline due to heat exchanger fouling, coolant cavitation, or excessive friction.",
+    "orderedSteps": [
+      "Step 1: Reduce load by 30% immediately to stabilize internal core temperature.",
+      "Step 2: Check coolant circulation pump pressure and verify thermostatic bypass valve actuation.",
+      "Step 3: Inspect heat exchanger fins/tubes for particulate fouling, scale buildup, or air entrainment.",
+      "Step 4: Verify coolant level, pH level, and glycol concentration percentage.",
+      "Step 5: Inspect thermal sensor thermocouple calibration and electrical lead resistance."
+    ],
+    "safetyPrecaution": "Allow coolant circuit to depressurize below 0.5 bar and cool below 45°C before opening reservoir caps."
+  },
+  {
+    "id": "RULE-PRESS-001",
+    "triggerMetric": "pressure",
+    "systemType": "any",
+    "problem": "Hydraulic / Pneumatic Line Pressure Anomaly",
+    "severity": "Warning",
+    "rootCause": "Hydraulic or pneumatic pressure deviation indicating relief valve drift, filter clogging, or micro-leakage in line manifolds.",
+    "orderedSteps": [
+      "Step 1: Read differential pressure gauges across suction and discharge filter elements.",
+      "Step 2: Inspect hydraulic proportional valves and pilot-operated check valves for stick-slip motion.",
+      "Step 3: Perform ultrasonic leak detection across manifold joints and flexible high-pressure hoses.",
+      "Step 4: Test accumulator pre-charge nitrogen pressure against specification.",
+      "Step 5: Replace clogged 10-micron filter element and recalibrate pressure transducer."
+    ],
+    "safetyPrecaution": "Bleed hydraulic accumulator pressure to zero before loosening any manifold coupling."
+  },
+  {
+    "id": "RULE-CURR-001",
+    "triggerMetric": "current",
+    "systemType": "any",
+    "problem": "Electrical Overcurrent & Stator Winding Stress",
+    "severity": "Critical",
+    "rootCause": "Stator phase current imbalance or excessive amp draw caused by mechanical binding, turn-to-turn insulation breakdown, or supply voltage unbalance.",
+    "orderedSteps": [
+      "Step 1: Record 3-phase current unbalance percentage: verify it is strictly within < 5%.",
+      "Step 2: Perform motor insulation resistance test (Megger test 1000V DC) across phase-to-ground.",
+      "Step 3: Rotate shaft by hand with motor de-energized to isolate mechanical binding versus electrical drag.",
+      "Step 4: Inspect variable frequency drive (VFD) output waveform and check DC bus capacitor ripple voltage.",
+      "Step 5: Verify terminal block bolt torques and check for discoloration indicative of thermal oxidation."
+    ],
+    "safetyPrecaution": "Confirm zero voltage across all 3 phases and discharge VFD DC bus capacitors before touching terminals."
+  },
+  {
+    "id": "RULE-FLOW-001",
+    "triggerMetric": "flow",
+    "systemType": "any",
+    "problem": "Volumetric Flow Rate Starvation / Cavitation",
+    "severity": "Warning",
+    "rootCause": "Inlet line restriction, strainer blockage, or impeller cavitation causing sudden drop in volumetric flow throughput.",
+    "orderedSteps": [
+      "Step 1: Check suction strainer vacuum gauge reading for restriction.",
+      "Step 2: Inspect intake piping for air ingress or vortex formation at reservoir inlet.",
+      "Step 3: Disassemble pump casing to inspect impeller leading edges for cavitation pitting.",
+      "Step 4: Clean or backflush intake basket strainer.",
+      "Step 5: Re-prime system and verify Net Positive Suction Head Available (NPSHa) exceeds NPSHr."
+    ],
+    "safetyPrecaution": "Depressurize and isolate suction and discharge gate valves before disassembling pump housing."
+  },
+  {
+    "id": "RULE-DEFAULT-001",
+    "triggerMetric": "generic",
+    "systemType": "any",
+    "problem": "Multivariate Sensor Drift & Subsystem Anomaly",
+    "severity": "Warning",
+    "rootCause": "Unusual multivariate pattern detected exceeding baseline empirical confidence envelope.",
+    "orderedSteps": [
+      "Step 1: Inspect primary and secondary sensor cabling for grounding noise or intermittent loose connections.",
+      "Step 2: Run calibration diagnostics against known reference test standards.",
+      "Step 3: Cross-check ambient environmental conditions (ambient temp, humidity, vibration harmonics).",
+      "Step 4: Schedule preventative maintenance inspection of corresponding subsystem within 48 hours."
+    ],
+    "safetyPrecaution": "Follow standard plant safety protocols and observe PPE requirements during physical inspection."
+  }
+]
+
