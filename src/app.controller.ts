@@ -19,7 +19,7 @@ export class AppController {
 
   @Post('sign-in')
   async signIn(@Body() body: { email: string; password: string }) {
-    const user = this.usersService.findByEmail(body.email);
+    const user = await this.usersService.findByEmail(body.email);
 
     if (!user) {
       throw new UnauthorizedException('Invalid email or password');
