@@ -1,168 +1,116 @@
-import { Detector, DetectionResult } from './detector.interface';
 import * as tf from '@tensorflow/tfjs';
-import * as fs from 'fs';
-import * as path from 'path';
+import { Detector, DetectionResult } from './detector.interface';
+import { StandardScaler } from '../../preprocessing/scaler';
+import { makeWindows } from '../../preprocessing/windowing';
 
 export class LstmAutoencoderDetector implements Detector {
   public name = 'lstm_ae';
-  private model: tf.LayersModel | null = null;
-  private timeSteps: number = 5;
-  private numFeatures: number = 0;
-  private thresholdError: number = 0.5;
-  private sensitivity: number = 0.8;
+  private model!: tf.LayersModel;
+  private scaler = new StandardScaler();
+  private threshold = 0;
 
-  private createWindows(X: number[][]): number[][][] {
-    if (X.length < this.timeSteps) {
-      // Pad if less than timesteps
-      const padded: number[][] = [];
-      while (padded.length + X.length < this.timeSteps) {
-        padded.push(X[0] || []);
-      }
-      return [[...padded, ...X]];
+  constructor(
+    private windowSize = 30,
+    private epochs = 30,
+  ) {}
+
+  async fit(X: number[][], params?: Record<string, any>) {
+    if (!X.length || !X[0]?.length) return;
+    if (params?.windowSize) this.windowSize = params.windowSize;
+    if (params?.epochs) this.epochs = params.epochs;
+
+    // Adjust window size if dataset has fewer rows than default
+    if (X.length <= this.windowSize) {
+      this.windowSize = Math.max(2, Math.floor(X.length / 2));
     }
 
-    const windows: number[][][] = [];
-    for (let i = 0; i <= X.length - this.timeSteps; i++) {
-      windows.push(X.slice(i, i + this.timeSteps));
-    }
-    return windows;
-  }
-
-  async fit(X: number[][], params?: Record<string, any>): Promise<void> {
-    if (!X.length || !X[0].length) return;
-    this.numFeatures = X[0].length;
-    this.timeSteps = params?.windowSize ?? 5;
-    this.sensitivity = params?.sensitivity ?? 0.8;
-    const epochs = params?.epochs ?? 20;
-    const batchSize = params?.batchSize ?? 16;
-
-    const windows = this.createWindows(X);
+    const Xs = this.scaler.fit(X).transform(X);
+    const nFeatures = X[0].length;
+    const windows = makeWindows(Xs, this.windowSize);
     if (!windows.length) return;
 
-    const tensorX = tf.tensor3d(windows);
+    const input = tf.tensor3d(windows);
 
-    // Build LSTM autoencoder
-    const input = tf.input({ shape: [this.timeSteps, this.numFeatures] });
-    const encoder = tf.layers.lstm({ units: 16, returnSequences: false }).apply(input);
-    const repeat = tf.layers.repeatVector({ n: this.timeSteps }).apply(encoder);
-    const decoder = tf.layers.lstm({ units: 16, returnSequences: true }).apply(repeat);
-    const output = tf.layers.timeDistributed({
-      layer: tf.layers.dense({ units: this.numFeatures, activation: 'linear' }),
-    }).apply(decoder) as tf.SymbolicTensor;
+    const m = tf.sequential();
+    m.add(
+      tf.layers.lstm({ units: 64, inputShape: [this.windowSize, nFeatures] }),
+    );
+    m.add(tf.layers.dense({ units: 16, activation: 'relu' })); // latent space
+    m.add(tf.layers.repeatVector({ n: this.windowSize }));
+    m.add(tf.layers.lstm({ units: 64, returnSequences: true }));
+    m.add(
+      tf.layers.timeDistributed({ layer: tf.layers.dense({ units: nFeatures }) }),
+    );
+    m.compile({ optimizer: tf.train.adam(1e-3), loss: 'meanSquaredError' });
 
-    this.model = tf.model({ inputs: input, outputs: output });
-    this.model.compile({
-      optimizer: tf.train.adam(0.005),
-      loss: 'meanSquaredError',
-    });
-
-    await this.model.fit(tensorX, tensorX, {
-      epochs,
-      batchSize,
+    await m.fit(input, input, {
+      epochs: this.epochs,
+      batchSize: 64,
       shuffle: true,
       verbose: 0,
     });
+    this.model = m;
 
-    // Evaluate baseline reconstruction error
-    const preds = this.model.predict(tensorX) as tf.Tensor;
-    const diff = tf.sub(tensorX, preds);
-    const sampleMSE = tf.mean(tf.square(diff), [1, 2]);
-    const errorsArray = (await sampleMSE.data()) as Float32Array;
-
-    tensorX.dispose();
-    preds.dispose();
-    diff.dispose();
-    sampleMSE.dispose();
-
-    const sorted = Array.from(errorsArray).sort((a, b) => a - b);
-    const qIndex = Math.min(
-      sorted.length - 1,
-      Math.floor(sorted.length * (1.0 - (this.sensitivity * 0.15))),
+    const errs = this.errors(input);
+    const mean = errs.reduce((a, b) => a + b, 0) / (errs.length || 1);
+    const std = Math.sqrt(
+      errs.reduce((a, b) => a + (b - mean) ** 2, 0) / (errs.length || 1),
     );
-    this.thresholdError = sorted[qIndex] || 0.1;
+    this.threshold = mean + 3 * std;
+    input.dispose();
   }
 
-  async predict(X: number[][]): Promise<DetectionResult> {
+  private errors(input: tf.Tensor3D): number[] {
+    return tf.tidy(() => {
+      const recon = this.model.predict(input) as tf.Tensor3D;
+      return Array.from(input.sub(recon).square().mean([1, 2]).dataSync());
+    });
+  }
+
+  predict(X: number[][]): DetectionResult {
     if (!this.model || !X.length) {
       return {
         flags: new Array(X.length).fill(false),
         scores: new Array(X.length).fill(0),
-        threshold: 0.5,
+        threshold: this.threshold,
       };
     }
 
-    const windows = this.createWindows(X);
-    const tensorX = tf.tensor3d(windows);
-    const preds = this.model.predict(tensorX) as tf.Tensor;
-
-    const diff = tf.sub(tensorX, preds);
-    const sampleMSE = tf.mean(tf.square(diff), [1, 2]);
-    const windowErrors = (await sampleMSE.data()) as Float32Array;
-
-    tensorX.dispose();
-    preds.dispose();
-    diff.dispose();
-    sampleMSE.dispose();
-
-    // Map window errors back to individual rows
-    const scores: number[] = new Array(X.length).fill(0);
-    const flags: boolean[] = new Array(X.length).fill(false);
-
-    for (let w = 0; w < windowErrors.length; w++) {
-      const err = windowErrors[w];
-      const normRatio = this.thresholdError > 0 ? err / this.thresholdError : 1;
-      const score = Math.max(0.0, Math.min(1.0, 1 / (1 + Math.exp(-2.5 * (normRatio - 1.0)))));
-      const isAnomaly = err >= this.thresholdError;
-
-      // Assign score to the end of the window (current observed point)
-      const targetIdx = Math.min(X.length - 1, w + this.timeSteps - 1);
-      scores[targetIdx] = Math.max(scores[targetIdx], score);
-      if (isAnomaly) flags[targetIdx] = true;
+    const Xs = this.scaler.transform(X);
+    const windows = makeWindows(Xs, this.windowSize);
+    if (!windows.length) {
+      return {
+        flags: new Array(X.length).fill(false),
+        scores: new Array(X.length).fill(0),
+        threshold: this.threshold,
+      };
     }
 
-    // For any unassigned initial points (before window filled), fill with first window's score
-    for (let i = 0; i < Math.min(this.timeSteps - 1, X.length); i++) {
-      scores[i] = scores[this.timeSteps - 1] ?? 0;
-      flags[i] = flags[this.timeSteps - 1] ?? false;
-    }
+    const input = tf.tensor3d(windows);
+    const errs = this.errors(input);
+    input.dispose();
 
-    return {
-      flags,
-      scores,
-      threshold: 0.5,
-    };
+    const pad = this.windowSize - 1; // align with original rows
+    const denom = this.threshold > 0 ? this.threshold * 2 : 1;
+    const flags = [
+      ...Array(pad).fill(false),
+      ...errs.map((e) => e > this.threshold),
+    ];
+    const scores = [
+      ...Array(pad).fill(0),
+      ...errs.map((e) => Math.min(e / denom, 1)),
+    ];
+
+    return { flags, scores, threshold: this.threshold };
   }
 
-  async save(filePath: string): Promise<void> {
-    if (!this.model) return;
-    const dir = path.dirname(filePath);
-    if (!fs.existsSync(dir)) {
-      fs.mkdirSync(dir, { recursive: true });
+  async save(path: string) {
+    if (this.model) {
+      await this.model.save(`file://${path}`);
     }
-    await this.model.save(`file://${filePath}`);
-    const metaPath = `${filePath}/meta.json`;
-    fs.writeFileSync(
-      metaPath,
-      JSON.stringify({
-        timeSteps: this.timeSteps,
-        numFeatures: this.numFeatures,
-        thresholdError: this.thresholdError,
-        sensitivity: this.sensitivity,
-      }),
-    );
   }
 
-  async load(filePath: string): Promise<void> {
-    const modelJsonPath = `file://${filePath}/model.json`;
-    this.model = await tf.loadLayersModel(modelJsonPath);
-    const metaPath = `${filePath}/meta.json`;
-    if (fs.existsSync(metaPath)) {
-      const meta = JSON.parse(fs.readFileSync(metaPath, 'utf8'));
-      this.timeSteps = meta.timeSteps;
-      this.numFeatures = meta.numFeatures;
-      this.thresholdError = meta.thresholdError;
-      this.sensitivity = meta.sensitivity;
-    }
+  async load(path: string) {
+    this.model = await tf.loadLayersModel(`file://${path}/model.json`);
   }
 }
-

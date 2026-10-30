@@ -1,134 +1,88 @@
-import { Detector, DetectionResult } from './detector.interface';
 import * as tf from '@tensorflow/tfjs';
-import * as fs from 'fs';
-import * as path from 'path';
+import { Detector, DetectionResult } from './detector.interface';
+import { StandardScaler } from '../../preprocessing/scaler';
 
 export class AutoencoderDetector implements Detector {
   public name = 'autoencoder';
-  private model: tf.LayersModel | null = null;
-  private inputDim: number = 0;
-  private thresholdError: number = 0.5;
-  private sensitivity: number = 0.8;
+  private model!: tf.LayersModel;
+  private scaler = new StandardScaler();
+  private threshold = 0;
+
+  constructor(
+    private epochs = 25,
+    private batchSize = 32,
+  ) {}
 
   async fit(X: number[][], params?: Record<string, any>): Promise<void> {
-    if (!X.length || !X[0].length) return;
-    this.inputDim = X[0].length;
-    this.sensitivity = params?.sensitivity ?? 0.8;
-    const epochs = params?.epochs ?? 25;
-    const batchSize = params?.batchSize ?? 32;
+    if (!X.length || !X[0]?.length) return;
+    if (params?.epochs) this.epochs = params.epochs;
+    if (params?.batchSize) this.batchSize = params.batchSize;
 
-    const tensorX = tf.tensor2d(X);
+    const Xs = this.scaler.fit(X).transform(X);
+    const nFeatures = X[0].length;
+    const input = tf.tensor2d(Xs);
 
-    // Build dense autoencoder model
-    const input = tf.input({ shape: [this.inputDim] });
-    const hidden1 = tf.layers.dense({ units: Math.max(8, Math.floor(this.inputDim * 2)), activation: 'relu' }).apply(input);
-    const bottleneck = tf.layers.dense({ units: Math.max(4, Math.floor(this.inputDim / 2)), activation: 'relu' }).apply(hidden1);
-    const hidden2 = tf.layers.dense({ units: Math.max(8, Math.floor(this.inputDim * 2)), activation: 'relu' }).apply(bottleneck);
-    const output = tf.layers.dense({ units: this.inputDim, activation: 'linear' }).apply(hidden2) as tf.SymbolicTensor;
+    const m = tf.sequential();
+    m.add(
+      tf.layers.dense({ units: 16, activation: 'relu', inputShape: [nFeatures] }),
+    );
+    m.add(tf.layers.dense({ units: 4, activation: 'relu' })); // latent bottleneck
+    m.add(tf.layers.dense({ units: 16, activation: 'relu' }));
+    m.add(tf.layers.dense({ units: nFeatures, activation: 'linear' }));
+    m.compile({ optimizer: tf.train.adam(1e-3), loss: 'meanSquaredError' });
 
-    this.model = tf.model({ inputs: input, outputs: output });
-    this.model.compile({
-      optimizer: tf.train.adam(0.005),
-      loss: 'meanSquaredError',
-    });
-
-    await this.model.fit(tensorX, tensorX, {
-      epochs,
-      batchSize,
+    await m.fit(input, input, {
+      epochs: this.epochs,
+      batchSize: this.batchSize,
       shuffle: true,
       verbose: 0,
     });
+    this.model = m;
 
-    // Estimate training reconstruction error to set baseline threshold
-    const preds = this.model.predict(tensorX) as tf.Tensor;
-    const errors = tf.losses.meanSquaredError(tensorX, preds) as tf.Tensor;
-    const errorsArray = (await errors.data()) as Float32Array;
-
-    tensorX.dispose();
-    preds.dispose();
-    errors.dispose();
-
-    // Sort errors and select (1.0 - sensitivity * 0.15) quantile as threshold
-    const sorted = Array.from(errorsArray).sort((a, b) => a - b);
-    const qIndex = Math.min(
-      sorted.length - 1,
-      Math.floor(sorted.length * (1.0 - (this.sensitivity * 0.15))),
+    const errs = this.errors(input);
+    const mean = errs.reduce((a, b) => a + b, 0) / (errs.length || 1);
+    const std = Math.sqrt(
+      errs.reduce((a, b) => a + (b - mean) ** 2, 0) / (errs.length || 1),
     );
-    this.thresholdError = sorted[qIndex] || 0.1;
+    this.threshold = mean + 3 * std;
+    input.dispose();
   }
 
-  async predict(X: number[][]): Promise<DetectionResult> {
+  private errors(input: tf.Tensor2D): number[] {
+    return tf.tidy(() => {
+      const recon = this.model.predict(input) as tf.Tensor2D;
+      return Array.from(input.sub(recon).square().mean(1).dataSync());
+    });
+  }
+
+  predict(X: number[][]): DetectionResult {
     if (!this.model || !X.length) {
       return {
         flags: new Array(X.length).fill(false),
         scores: new Array(X.length).fill(0),
-        threshold: 0.5,
+        threshold: this.threshold,
       };
     }
 
-    const tensorX = tf.tensor2d(X);
-    const preds = this.model.predict(tensorX) as tf.Tensor;
-    
-    // Per-sample MSE: (x - x_hat)^2
-    const diff = tf.sub(tensorX, preds);
-    const squared = tf.square(diff);
-    const sampleMSE = tf.mean(squared, 1);
-    const errorsArray = (await sampleMSE.data()) as Float32Array;
+    const Xs = this.scaler.transform(X);
+    const input = tf.tensor2d(Xs);
+    const errs = this.errors(input);
+    input.dispose();
 
-    tensorX.dispose();
-    preds.dispose();
-    diff.dispose();
-    squared.dispose();
-    sampleMSE.dispose();
+    const denom = this.threshold > 0 ? this.threshold * 2 : 1;
+    const flags = errs.map((e) => e > this.threshold);
+    const scores = errs.map((e) => Math.min(e / denom, 1));
 
-    const scores: number[] = [];
-    const flags: boolean[] = [];
-
-    for (let i = 0; i < errorsArray.length; i++) {
-      const err = errorsArray[i];
-      // Normalize error: 1 / (1 + exp(-4 * (err - threshold)/threshold))
-      const normRatio = this.thresholdError > 0 ? err / this.thresholdError : 1;
-      const score = Math.max(0.0, Math.min(1.0, 1 / (1 + Math.exp(-2.5 * (normRatio - 1.0)))));
-      scores.push(score);
-      flags.push(err >= this.thresholdError);
-    }
-
-    return {
-      flags,
-      scores,
-      threshold: 0.5,
-    };
+    return { flags, scores, threshold: this.threshold };
   }
 
-  async save(filePath: string): Promise<void> {
-    if (!this.model) return;
-    const dir = path.dirname(filePath);
-    if (!fs.existsSync(dir)) {
-      fs.mkdirSync(dir, { recursive: true });
+  async save(path: string) {
+    if (this.model) {
+      await this.model.save(`file://${path}`);
     }
-    // Save model topology and weights
-    await this.model.save(`file://${filePath}`);
-    const metaPath = `${filePath}/meta.json`;
-    fs.writeFileSync(
-      metaPath,
-      JSON.stringify({
-        inputDim: this.inputDim,
-        thresholdError: this.thresholdError,
-        sensitivity: this.sensitivity,
-      }),
-    );
   }
 
-  async load(filePath: string): Promise<void> {
-    const modelJsonPath = `file://${filePath}/model.json`;
-    this.model = await tf.loadLayersModel(modelJsonPath);
-    const metaPath = `${filePath}/meta.json`;
-    if (fs.existsSync(metaPath)) {
-      const meta = JSON.parse(fs.readFileSync(metaPath, 'utf8'));
-      this.inputDim = meta.inputDim;
-      this.thresholdError = meta.thresholdError;
-      this.sensitivity = meta.sensitivity;
-    }
+  async load(path: string) {
+    this.model = await tf.loadLayersModel(`file://${path}/model.json`);
   }
 }
-
