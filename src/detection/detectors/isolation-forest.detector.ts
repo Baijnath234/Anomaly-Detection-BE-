@@ -1,119 +1,113 @@
 import { Detector, DetectionResult } from './detector.interface';
+import { StandardScaler } from '../../preprocessing/scaler';
 
-interface ITreeNode {
-  isLeaf: boolean;
+type TreeNode = {
   size: number;
-  splitFeature?: number;
-  splitValue?: number;
-  left?: ITreeNode;
-  right?: ITreeNode;
+  feature?: number;
+  split?: number;
+  left?: TreeNode;
+  right?: TreeNode;
+};
+
+// average path length of an unsuccessful BST search
+const c = (n: number) =>
+  n <= 1 ? 0 : 2 * (Math.log(n - 1) + 0.5772156649) - (2 * (n - 1)) / n;
+
+function build(data: number[][], depth: number, maxDepth: number): TreeNode {
+  if (depth >= maxDepth || data.length <= 1) return { size: data.length };
+  const f = Math.floor(Math.random() * data[0].length);
+  let min = Infinity,
+    max = -Infinity;
+  for (const r of data) {
+    if (r[f] < min) min = r[f];
+    if (r[f] > max) max = r[f];
+  }
+  if (min === max) return { size: data.length };
+  const split = min + Math.random() * (max - min);
+  return {
+    size: data.length,
+    feature: f,
+    split,
+    left: build(
+      data.filter((r) => r[f] < split),
+      depth + 1,
+      maxDepth,
+    ),
+    right: build(
+      data.filter((r) => r[f] >= split),
+      depth + 1,
+      maxDepth,
+    ),
+  };
+}
+
+function pathLength(x: number[], node: TreeNode, depth = 0): number {
+  if (node.feature === undefined) return depth + c(node.size);
+  return pathLength(
+    x,
+    x[node.feature] < node.split! ? node.left! : node.right!,
+    depth + 1,
+  );
 }
 
 export class IsolationForestDetector implements Detector {
   public name = 'isolation_forest';
-  private trees: ITreeNode[] = [];
-  private numTrees: number = 50;
-  private subSampleSize: number = 128;
-  private maxDepth: number = 8;
-  private sensitivity: number = 0.8;
-  private thresholdScore: number = 0.6;
+  private trees: TreeNode[] = [];
+  private scaler = new StandardScaler();
+  private sampleSize = 256;
+  private threshold = 0.5;
 
-  private averagePathLength(n: number): number {
-    if (n <= 1) return 0;
-    if (n === 2) return 1;
-    const euler = 0.5772156649;
-    return 2 * (Math.log(n - 1) + euler) - (2 * (n - 1)) / n;
+  constructor(
+    private nTrees = 100,
+    private contamination = 0.05,
+  ) {}
+
+  fit(X: number[][], params?: Record<string, any>) {
+    if (!X.length || !X[0]?.length) return;
+    if (params?.nTrees || params?.numTrees) {
+      this.nTrees = params.nTrees ?? params.numTrees;
+    }
+    if (params?.contamination !== undefined) {
+      this.contamination = params.contamination;
+    }
+    if (params?.sensitivity !== undefined) {
+      this.contamination = Math.min(0.25, Math.max(0.01, params.sensitivity * 0.1));
+    }
+
+    const Xs = this.scaler.fit(X).transform(X);
+    this.sampleSize = Math.min(256, Xs.length);
+    const maxDepth = Math.ceil(Math.log2(Math.max(2, this.sampleSize)));
+    this.trees = Array.from({ length: this.nTrees }, () => {
+      const sample = Array.from(
+        { length: this.sampleSize },
+        () => Xs[Math.floor(Math.random() * Xs.length)],
+      );
+      return build(sample, 0, maxDepth);
+    });
+
+    // threshold = score at the (1 - contamination) quantile of training data
+    const scores = Xs.map((x) => this.score(x)).sort((a, b) => a - b);
+    const qIndex = Math.min(
+      scores.length - 1,
+      Math.floor(scores.length * (1 - this.contamination)),
+    );
+    this.threshold = scores[qIndex] ?? 0.5;
   }
 
-  private buildTree(X: number[][], currentDepth: number): ITreeNode {
-    const numRows = X.length;
-    if (currentDepth >= this.maxDepth || numRows <= 1) {
-      return { isLeaf: true, size: numRows };
-    }
-
-    const numCols = X[0].length;
-    const splitFeature = Math.floor(Math.random() * numCols);
-    const colVals = X.map((r) => r[splitFeature]);
-    const minVal = Math.min(...colVals);
-    const maxVal = Math.max(...colVals);
-
-    if (minVal === maxVal) {
-      return { isLeaf: true, size: numRows };
-    }
-
-    const splitValue = minVal + Math.random() * (maxVal - minVal);
-    const leftRows = X.filter((r) => r[splitFeature] < splitValue);
-    const rightRows = X.filter((r) => r[splitFeature] >= splitValue);
-
-    if (leftRows.length === 0 || rightRows.length === 0) {
-      return { isLeaf: true, size: numRows };
-    }
-
-    return {
-      isLeaf: false,
-      size: numRows,
-      splitFeature,
-      splitValue,
-      left: this.buildTree(leftRows, currentDepth + 1),
-      right: this.buildTree(rightRows, currentDepth + 1),
-    };
-  }
-
-  private pathLength(x: number[], node: ITreeNode, currentDepth: number): number {
-    if (node.isLeaf) {
-      return currentDepth + this.averagePathLength(node.size);
-    }
-    const feat = node.splitFeature!;
-    const val = node.splitValue!;
-    if (x[feat] < val) {
-      return this.pathLength(x, node.left!, currentDepth + 1);
-    } else {
-      return this.pathLength(x, node.right!, currentDepth + 1);
-    }
-  }
-
-  fit(X: number[][], params?: Record<string, any>): void {
-    if (!X.length) return;
-    this.sensitivity = params?.sensitivity ?? 0.8;
-    this.numTrees = params?.numTrees ?? 50;
-    this.subSampleSize = Math.min(X.length, params?.subSampleSize ?? 128);
-    this.maxDepth = Math.ceil(Math.log2(Math.max(2, this.subSampleSize)));
-    this.thresholdScore = 0.7 - this.sensitivity * 0.25; // 0.8 sens => ~0.50 threshold
-
-    this.trees = [];
-    for (let t = 0; t < this.numTrees; t++) {
-      // Subsample with replacement
-      const sample: number[][] = [];
-      for (let i = 0; i < this.subSampleSize; i++) {
-        const idx = Math.floor(Math.random() * X.length);
-        sample.push(X[idx]);
-      }
-      this.trees.push(this.buildTree(sample, 0));
-    }
+  private score(x: number[]): number {
+    if (!this.trees.length) return 0.5;
+    const avg =
+      this.trees.reduce((s, t) => s + pathLength(x, t), 0) / this.trees.length;
+    const cN = c(this.sampleSize);
+    return cN > 0 ? Math.pow(2, -avg / cN) : 0.5;
   }
 
   predict(X: number[][]): DetectionResult {
-    const scores: number[] = [];
-    const flags: boolean[] = [];
-    const cN = this.averagePathLength(this.subSampleSize);
-
-    for (const x of X) {
-      let totalPath = 0;
-      for (const tree of this.trees) {
-        totalPath += this.pathLength(x, tree, 0);
-      }
-      const avgPath = totalPath / (this.trees.length || 1);
-      // Anomaly score: s = 2 ^ (-E(h) / c(n))
-      const score = cN > 0 ? Math.pow(2, -avgPath / cN) : 0.5;
-      scores.push(Math.min(1.0, Math.max(0.0, score)));
-      flags.push(score >= this.thresholdScore);
-    }
-
+    const scores = this.scaler.transform(X).map((x) => this.score(x));
     return {
-      flags,
+      flags: scores.map((s) => s > this.threshold),
       scores,
-      threshold: this.thresholdScore,
+      threshold: this.threshold,
     };
   }
 }
-
