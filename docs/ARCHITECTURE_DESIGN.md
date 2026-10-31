@@ -448,3 +448,4 @@ Before proceeding to Phase 2 (IoT Hardware Integration) and Phase 3 (Backend Imp
 
 ---
 *End of Architectural Design Document (Task 1)*
+
