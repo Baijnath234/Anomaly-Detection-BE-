@@ -155,3 +155,4 @@ if (require.main === module) {
     JSON.stringify(simulator.generateReading('SENSOR_DISCONNECT'), null, 2),
   );
 }
+

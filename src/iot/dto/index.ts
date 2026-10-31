@@ -89,3 +89,4 @@ export class DispatchCommandDto {
   @IsEnum(['ON', 'OFF'])
   commandState: 'ON' | 'OFF';
 }
+

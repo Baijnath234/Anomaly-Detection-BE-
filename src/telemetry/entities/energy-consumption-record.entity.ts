@@ -49,3 +49,4 @@ export class EnergyConsumptionRecord {
   @CreateDateColumn({ type: 'timestamptz' })
   createdAt: Date;
 }
+

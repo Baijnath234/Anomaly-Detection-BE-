@@ -43,3 +43,4 @@ export class MaintenanceRecord {
   @CreateDateColumn({ type: 'timestamptz' })
   createdAt: Date;
 }
+

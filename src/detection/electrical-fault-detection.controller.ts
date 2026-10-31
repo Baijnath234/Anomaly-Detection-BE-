@@ -59,3 +59,4 @@ export class ElectricalFaultDetectionController {
     return { evaluatedCount: results.length, reports: results };
   }
 }
+

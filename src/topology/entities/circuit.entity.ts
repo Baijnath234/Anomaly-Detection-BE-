@@ -63,3 +63,4 @@ export class Circuit {
   @OneToMany(() => Device, (device) => device.circuit)
   devices: Device[];
 }
+

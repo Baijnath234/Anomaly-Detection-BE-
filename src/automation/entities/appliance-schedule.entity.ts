@@ -47,3 +47,4 @@ export class ApplianceSchedule {
   @UpdateDateColumn({ type: 'timestamptz' })
   updatedAt: Date;
 }
+

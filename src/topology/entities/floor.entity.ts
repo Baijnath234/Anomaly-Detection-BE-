@@ -35,3 +35,4 @@ export class Floor {
   @OneToMany(() => Room, (room) => room.floor, { cascade: true })
   rooms: Room[];
 }
+

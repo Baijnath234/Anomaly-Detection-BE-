@@ -69,3 +69,4 @@ describe('ElectricalFaultsService (Task 3 Faults & Alerts)', () => {
     expect(acknowledged.acknowledgedAt).toBeDefined();
   });
 });
+

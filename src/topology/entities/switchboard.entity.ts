@@ -48,3 +48,4 @@ export class Switchboard {
   @OneToMany(() => Device, (dev) => dev.switchboard, { cascade: true })
   devices: Device[];
 }
+

@@ -107,3 +107,4 @@ describe('ElectricalFaultDetectionService (Task 4 AI Fault Detection Engine)', (
     expect(report.detectionMethod).toBe('SENSOR_TRANSDUCER_HEALTH_CHECK');
   });
 });
+

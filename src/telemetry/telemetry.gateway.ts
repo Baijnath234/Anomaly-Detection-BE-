@@ -59,3 +59,4 @@ export class TelemetryGateway implements OnGatewayConnection, OnGatewayDisconnec
     }
   }
 }
+

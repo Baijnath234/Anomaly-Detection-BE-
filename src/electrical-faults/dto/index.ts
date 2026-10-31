@@ -80,3 +80,4 @@ export class CreateAlertRuleDto {
   @IsEnum(['INFO', 'WARNING', 'CRITICAL'])
   severity: 'INFO' | 'WARNING' | 'CRITICAL';
 }
+

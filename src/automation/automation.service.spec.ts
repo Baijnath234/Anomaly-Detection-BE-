@@ -84,3 +84,4 @@ describe('AutomationService (Task 6 Smart Automation & Tickets)', () => {
     expect(assigned.status).toBe('ASSIGNED');
   });
 });
+

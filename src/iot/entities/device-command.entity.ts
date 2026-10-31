@@ -51,3 +51,4 @@ export class DeviceCommand {
   @Column({ type: 'timestamptz', nullable: true })
   ackedAt: Date;
 }
+

@@ -37,3 +37,4 @@ export class AutomationScene {
   @CreateDateColumn({ type: 'timestamptz' })
   createdAt: Date;
 }
+

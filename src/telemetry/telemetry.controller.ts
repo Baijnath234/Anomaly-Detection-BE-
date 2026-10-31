@@ -52,3 +52,4 @@ export class TelemetryController {
     return await this.telemetryService.getEnergyConsumption(circuitId);
   }
 }
+

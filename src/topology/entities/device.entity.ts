@@ -71,3 +71,4 @@ export class Device {
   @UpdateDateColumn({ type: 'timestamptz' })
   updatedAt: Date;
 }
+

@@ -73,3 +73,4 @@ describe('TelemetryService (Task 3 Real-time Stream & Ingestion)', () => {
     expect(history[0].voltageRms).toBe(231.2);
   });
 });
+

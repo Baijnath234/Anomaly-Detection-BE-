@@ -52,3 +52,4 @@ export class IoTController {
   @OneToMany(() => Sensor, (s) => s.controller)
   sensors: Sensor[];
 }
+

@@ -225,3 +225,4 @@ if __name__ == "__main__":
         res = detector.evaluate(demo_reading, {"breaker_rating_amps": 16.0})
         print("Demo Overcurrent Evaluation:")
         print(json.dumps(res, indent=2))
+

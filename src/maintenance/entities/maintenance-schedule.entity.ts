@@ -47,3 +47,4 @@ export class MaintenanceSchedule {
   @CreateDateColumn({ type: 'timestamptz' })
   createdAt: Date;
 }
+

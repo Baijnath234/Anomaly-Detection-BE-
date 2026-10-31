@@ -52,3 +52,4 @@ export class Building {
   @OneToMany(() => ElectricalPanel, (panel) => panel.building, { cascade: true })
   panels: ElectricalPanel[];
 }
+

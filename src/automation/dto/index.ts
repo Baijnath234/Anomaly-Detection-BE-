@@ -94,3 +94,4 @@ export class AssignTicketDto {
   @IsNotEmpty()
   technicianName: string;
 }
+

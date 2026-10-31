@@ -43,3 +43,4 @@ describe('IoTTelemetrySimulator (Task 2 Hardware Integration)', () => {
     expect(circuit.sensor_health.temp_connected).toBe(false);
   });
 });
+

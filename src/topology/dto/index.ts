@@ -166,3 +166,4 @@ export class ToggleDeviceDto {
   @IsEnum(['ON', 'OFF'])
   state: 'ON' | 'OFF';
 }
+

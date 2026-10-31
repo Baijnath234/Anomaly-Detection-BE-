@@ -110,3 +110,4 @@ export class ElectricalFaultsService {
     return await this.notificationRepo.save(notification);
   }
 }
+

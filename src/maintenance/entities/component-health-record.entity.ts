@@ -64,3 +64,4 @@ export class ComponentHealthRecord {
   @CreateDateColumn({ type: 'timestamptz' })
   createdAt: Date;
 }
+

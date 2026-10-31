@@ -54,3 +54,4 @@ export class MaintenanceTicket {
   @Column({ type: 'timestamptz', nullable: true })
   resolvedAt: Date;
 }
+

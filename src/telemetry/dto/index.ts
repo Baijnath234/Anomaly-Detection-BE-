@@ -78,3 +78,4 @@ export class IngestTelemetryBatchDto {
   @Type(() => CircuitTelemetryItemDto)
   circuits: CircuitTelemetryItemDto[];
 }
+

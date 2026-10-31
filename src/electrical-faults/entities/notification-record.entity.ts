@@ -41,3 +41,4 @@ export class NotificationRecord {
   @CreateDateColumn({ type: 'timestamptz' })
   createdAt: Date;
 }
+

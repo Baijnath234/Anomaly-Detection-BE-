@@ -101,3 +101,4 @@ export class ScheduleMaintenanceDto {
   @IsNotEmpty()
   recommendationReason: string;
 }
+

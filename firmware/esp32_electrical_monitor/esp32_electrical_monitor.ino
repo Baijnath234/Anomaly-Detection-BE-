@@ -319,3 +319,4 @@ void kickWatchdog() {
     delayMicroseconds(20);
     digitalWrite(PIN_EXT_WDT, LOW);
 }
+

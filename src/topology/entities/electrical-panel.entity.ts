@@ -51,3 +51,4 @@ export class ElectricalPanel {
   @OneToMany(() => Circuit, (circuit) => circuit.panel, { cascade: true })
   circuits: Circuit[];
 }
+

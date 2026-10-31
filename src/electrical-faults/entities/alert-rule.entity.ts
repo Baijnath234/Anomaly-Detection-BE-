@@ -66,3 +66,4 @@ export class AlertRule {
   @UpdateDateColumn({ type: 'timestamptz' })
   updatedAt: Date;
 }
+

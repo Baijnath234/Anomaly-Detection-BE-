@@ -65,3 +65,4 @@ describe('PredictiveMaintenanceEngine (Task 5 AI Predictive Maintenance)', () =>
     expect(output.recommendedAction).toContain('Immediate certified electrician inspection');
   });
 });
+

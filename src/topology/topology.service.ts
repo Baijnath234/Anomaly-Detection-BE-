@@ -142,3 +142,4 @@ export class TopologyService {
     return await this.deviceRepo.save(device);
   }
 }
+

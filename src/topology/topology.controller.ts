@@ -104,3 +104,4 @@ export class TopologyController {
     return await this.topologyService.toggleDevice(id, dto);
   }
 }
+

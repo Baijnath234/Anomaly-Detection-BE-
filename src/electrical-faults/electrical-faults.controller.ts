@@ -72,3 +72,4 @@ export class ElectricalFaultsController {
     return await this.faultsService.markNotificationRead(id);
   }
 }
+

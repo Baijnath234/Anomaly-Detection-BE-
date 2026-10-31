@@ -53,3 +53,4 @@ export class Sensor {
   @CreateDateColumn({ type: 'timestamptz' })
   createdAt: Date;
 }
+

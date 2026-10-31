@@ -86,3 +86,4 @@ describe('IoTService (Task 3 Hardware Communication & Registry)', () => {
     expect(mockAuditRepo.save).toHaveBeenCalled();
   });
 });
+

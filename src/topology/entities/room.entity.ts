@@ -39,3 +39,4 @@ export class Room {
   @OneToMany(() => Switchboard, (board) => board.room, { cascade: true })
   switchboards: Switchboard[];
 }
+

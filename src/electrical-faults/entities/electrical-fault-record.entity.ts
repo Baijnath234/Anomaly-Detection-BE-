@@ -75,3 +75,4 @@ export class ElectricalFaultRecord {
   @CreateDateColumn({ type: 'timestamptz' })
   createdAt: Date;
 }
+
