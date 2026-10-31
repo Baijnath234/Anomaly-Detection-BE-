@@ -17,6 +17,7 @@ import { JobsModule } from './jobs/jobs.module';
 // Existing user / auth modules
 import { UserModule } from './users/users.module';
 import { AuthModule } from './auth/auth.module';
+import * as path from 'path';
 import { AppController } from './app.controller';
 
 @Module({
@@ -25,7 +26,12 @@ import { AppController } from './app.controller';
       isGlobal: true,
       load: [configuration],
       validate,
-      envFilePath: ['.env', '.env.local'],
+      envFilePath: [
+        path.resolve(process.cwd(), '.env'),
+        path.resolve(__dirname, '../.env'),
+        '.env',
+        '.env.local',
+      ],
     }),
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
@@ -34,7 +40,7 @@ import { AppController } from './app.controller';
         host: config.get<string>('database.host', 'localhost'),
         port: config.get<number>('database.port', 5432),
         username: config.get<string>('database.username', 'postgres'),
-        password: String(config.get<string>('database.password', 'postgres')),
+        password: String(config.get<string>('database.password', 'root')),
         database: config.get<string>('database.database', 'anomaly_detection'),
         entities: [__dirname + '/**/*.entity{.ts,.js}'],
         synchronize: process.env.NODE_ENV !== 'production',

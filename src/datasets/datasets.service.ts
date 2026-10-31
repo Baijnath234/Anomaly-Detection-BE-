@@ -39,20 +39,46 @@ export class DatasetsService {
     file: Express.Multer.File,
     dto: UploadDatasetDto,
   ): Promise<Dataset> {
-    if (!file || !file.buffer) {
-      throw new BadRequestException('A valid CSV file is required.');
+    if (!file || !file.buffer || file.buffer.length === 0) {
+      throw new BadRequestException('A valid non-empty CSV file is required.');
     }
 
-    const system = await this.systemRepository.findOne({
-      where: { id: dto.systemId },
-    });
+    // Resolve or auto-provision target System
+    let system: System | null = null;
+    if (dto.systemId) {
+      try {
+        system = await this.systemRepository.findOne({
+          where: { id: dto.systemId },
+        });
+      } catch (err) {
+        // In case systemId is not a valid UUID format
+        system = null;
+      }
+    }
+
     if (!system) {
-      throw new NotFoundException(`System with ID '${dto.systemId}' not found.`);
+      const existing = await this.systemRepository.find({ take: 1 });
+      if (existing.length > 0) {
+        system = existing[0];
+      } else {
+        system = await this.systemRepository.save(
+          this.systemRepository.create({
+            name: 'Default Monitored Equipment',
+            type: 'Industrial Asset',
+          }),
+        );
+      }
+    }
+
+    // Strip UTF-8 BOM if present
+    let rawContent = file.buffer.toString('utf-8');
+    if (rawContent.charCodeAt(0) === 0xfeff) {
+      rawContent = rawContent.slice(1);
     }
 
     let records: Record<string, any>[];
     try {
-      records = parse(file.buffer, {
+      records = parse(rawContent, {
         columns: true,
         skip_empty_lines: true,
         trim: true,
@@ -62,48 +88,61 @@ export class DatasetsService {
     }
 
     if (!records || records.length === 0) {
-      throw new BadRequestException('CSV file is empty or contains only headers.');
+      throw new BadRequestException('CSV file is empty or contains only header row.');
     }
 
-    const allHeaders = Object.keys(records[0]);
+    const allHeaders = Object.keys(records[0]).map((h) => h.trim());
 
-    // Find timestamp column
-    let timeCol = dto.timestampColumn;
+    // 1. Identify timestamp column
+    let timeCol: string | undefined;
+    if (dto.timestampColumn) {
+      const requested = dto.timestampColumn.trim().toLowerCase();
+      timeCol = allHeaders.find((h) => h.toLowerCase() === requested);
+    }
+
     if (!timeCol) {
-      const candidates = ['timestamp', 'time', 'datetime', 'date', 'ts'];
-      timeCol = allHeaders.find((h) => candidates.includes(h.toLowerCase()));
-    }
-
-    if (!timeCol || !allHeaders.includes(timeCol)) {
-      throw new BadRequestException(
-        `Timestamp column '${timeCol || 'timestamp'}' not found in CSV. Detected headers: [${allHeaders.join(', ')}].`,
+      const candidates = ['timestamp', 'time', 'datetime', 'date', 'ts', 'epoch', 'step', 'index'];
+      timeCol = allHeaders.find((h) =>
+        candidates.some((c) => h.toLowerCase().includes(c)),
       );
     }
 
-    // Identify numeric sensor columns
+    // Fallback: use first column if candidate not found
+    if (!timeCol) {
+      timeCol = allHeaders[0];
+    }
+
+    // 2. Identify numeric sensor columns across sample rows
+    const sampleRows = records.slice(0, 25);
     const numericCols = allHeaders.filter((h) => {
       if (h === timeCol) return false;
-      const sampleVal = records[0][h];
-      const parsed = parseFloat(sampleVal);
-      return !Number.isNaN(parsed) && Number.isFinite(parsed);
+      return sampleRows.some((r) => {
+        const val = parseFloat(r[h]);
+        return !Number.isNaN(val) && Number.isFinite(val);
+      });
     });
 
     if (numericCols.length === 0) {
       throw new BadRequestException(
-        `At least one numeric sensor column is required. Found columns: [${allHeaders.join(', ')}]`,
+        `At least one numeric sensor column is required. Detected columns: [${allHeaders.join(', ')}]`,
       );
     }
 
+    const datasetName =
+      (dto.name && dto.name.trim()) ||
+      file.originalname.replace(/\.[^/.]+$/, '') ||
+      'Uploaded Dataset';
+
     // Create Dataset entity
     const dataset = this.datasetRepository.create({
-      systemId: dto.systemId,
-      name: dto.name,
+      systemId: system.id,
+      name: datasetName,
       columns: allHeaders,
       rowCount: records.length,
     });
     const savedDataset = await this.datasetRepository.save(dataset);
 
-    // Prepare MetricRow entities in batches
+    // Batch insert MetricRow entities
     const BATCH_SIZE = 500;
     const rowsToInsert: Array<{
       datasetId: string;
@@ -111,13 +150,16 @@ export class DatasetsService {
       values: Record<string, number>;
     }> = [];
 
+    const nowBase = Date.now() - records.length * 60 * 1000;
+
     for (let i = 0; i < records.length; i++) {
       const record = records[i];
       const rawTime = record[timeCol];
       const parsedDate = new Date(rawTime);
-      const timestamp = !isNaN(parsedDate.getTime())
-        ? parsedDate
-        : new Date(Date.now() + i * 1000); // Fallback: 1-second intervals if invalid string
+      const timestamp =
+        rawTime && !isNaN(parsedDate.getTime())
+          ? parsedDate
+          : new Date(nowBase + i * 60 * 1000); // 1-minute fallback interval
 
       const values: Record<string, number> = {};
       for (const col of numericCols) {
@@ -161,9 +203,10 @@ export class DatasetsService {
     });
 
     const numericColumns = rows.length > 0 ? Object.keys(rows[0].values) : [];
-    const timestampCol = dataset.columns.find((c) =>
-      ['timestamp', 'time', 'datetime', 'date'].includes(c.toLowerCase()),
-    ) || 'timestamp';
+    const timestampCol =
+      dataset.columns.find((c) =>
+        ['timestamp', 'time', 'datetime', 'date'].includes(c.toLowerCase()),
+      ) || dataset.columns[0] || 'timestamp';
 
     return {
       id: dataset.id,
@@ -197,4 +240,3 @@ export class DatasetsService {
     return dataset;
   }
 }
-
