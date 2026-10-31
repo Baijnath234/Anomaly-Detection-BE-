@@ -5,6 +5,7 @@ import { MaintenanceRecord } from './entities/maintenance-record.entity';
 import { MaintenanceSchedule } from './entities/maintenance-schedule.entity';
 import { MaintenanceService } from './maintenance.service';
 import { MaintenanceController } from './maintenance.controller';
+import { PredictiveMaintenanceEngine } from './predictive-maintenance.engine';
 
 @Module({
   imports: [
@@ -15,7 +16,7 @@ import { MaintenanceController } from './maintenance.controller';
     ]),
   ],
   controllers: [MaintenanceController],
-  providers: [MaintenanceService],
-  exports: [MaintenanceService],
+  providers: [MaintenanceService, PredictiveMaintenanceEngine],
+  exports: [MaintenanceService, PredictiveMaintenanceEngine],
 })
 export class MaintenanceModule {}

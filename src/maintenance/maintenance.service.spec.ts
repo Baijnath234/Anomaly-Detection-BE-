@@ -4,6 +4,7 @@ import { MaintenanceService } from './maintenance.service';
 import { ComponentHealthRecord } from './entities/component-health-record.entity';
 import { MaintenanceRecord } from './entities/maintenance-record.entity';
 import { MaintenanceSchedule } from './entities/maintenance-schedule.entity';
+import { PredictiveMaintenanceEngine } from './predictive-maintenance.engine';
 
 describe('MaintenanceService (Task 3 Predictive Maintenance & Schedules)', () => {
   let service: MaintenanceService;
@@ -38,6 +39,7 @@ describe('MaintenanceService (Task 3 Predictive Maintenance & Schedules)', () =>
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         MaintenanceService,
+        PredictiveMaintenanceEngine,
         { provide: getRepositoryToken(ComponentHealthRecord), useValue: mockHealthRepo },
         { provide: getRepositoryToken(MaintenanceRecord), useValue: mockRecordRepo },
         { provide: getRepositoryToken(MaintenanceSchedule), useValue: mockScheduleRepo },

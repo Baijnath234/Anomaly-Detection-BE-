@@ -28,6 +28,12 @@ export class MaintenanceController {
     return await this.maintenanceService.getHealthOverview();
   }
 
+  @Post('predict')
+  @ApiOperation({ summary: 'Predict maintenance condition and failure risk for an electrical asset' })
+  async predictComponentHealth(@Body() body: any) {
+    return await this.maintenanceService.predictComponentHealth(body, body.saveToDb ?? true);
+  }
+
   @Get('health/:entityId')
   @ApiOperation({ summary: 'Get Health Index and RUL for a specific component' })
   async getComponentHealth(@Param('entityId') entityId: string) {

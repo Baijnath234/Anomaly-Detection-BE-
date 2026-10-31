@@ -9,6 +9,11 @@ import {
   RecordMaintenanceDto,
   ScheduleMaintenanceDto,
 } from './dto';
+import {
+  PredictiveMaintenanceEngine,
+  ComponentTelemetryContext,
+  PredictiveMaintenanceOutput,
+} from './predictive-maintenance.engine';
 
 @Injectable()
 export class MaintenanceService {
@@ -19,7 +24,29 @@ export class MaintenanceService {
     private readonly recordRepo: Repository<MaintenanceRecord>,
     @InjectRepository(MaintenanceSchedule)
     private readonly scheduleRepo: Repository<MaintenanceSchedule>,
+    private readonly predictiveEngine: PredictiveMaintenanceEngine,
   ) {}
+
+  async predictComponentHealth(
+    context: ComponentTelemetryContext,
+    saveToDb: boolean = true,
+  ): Promise<PredictiveMaintenanceOutput> {
+    const prediction = this.predictiveEngine.evaluateComponent(context);
+
+    if (saveToDb) {
+      await this.updateComponentHealth({
+        entityType: context.componentType as any,
+        entityId: context.componentId,
+        healthScore: prediction.healthScore,
+        failureRisk: prediction.riskLevel,
+        estimatedRulDays: prediction.healthScore > 50 ? 365 : 60,
+        thermalStressAccumulated: prediction.supportingEvidence.thermalStressScore,
+        degradationReason: prediction.detectedIssues.join('; '),
+      });
+    }
+
+    return prediction;
+  }
 
   async getHealthOverview(): Promise<ComponentHealthRecord[]> {
     return await this.healthRepo.find({
