@@ -14,6 +14,9 @@ import { PreprocessingService } from '../preprocessing/preprocessing.service';
 import { SeverityService } from '../severity/severity.service';
 import { RootCauseService } from '../root-cause/root-cause.service';
 import { JobsModule } from '../jobs/jobs.module';
+import { ElectricalFaultsModule } from '../electrical-faults/electrical-faults.module';
+import { ElectricalFaultDetectionService } from './electrical-fault-detection.service';
+import { ElectricalFaultDetectionController } from './electrical-fault-detection.controller';
 
 @Module({
   imports: [
@@ -29,16 +32,18 @@ import { JobsModule } from '../jobs/jobs.module';
       name: 'model-training',
     }),
     JobsModule,
+    ElectricalFaultsModule,
   ],
-  controllers: [DetectionController],
+  controllers: [DetectionController, ElectricalFaultDetectionController],
   providers: [
     DetectionService,
     DetectorFactory,
     PreprocessingService,
     SeverityService,
     RootCauseService,
+    ElectricalFaultDetectionService,
   ],
-  exports: [DetectionService, DetectorFactory],
+  exports: [DetectionService, DetectorFactory, ElectricalFaultDetectionService],
 })
 export class DetectionModule {}
 
