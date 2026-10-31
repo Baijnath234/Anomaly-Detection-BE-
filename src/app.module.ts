@@ -14,12 +14,13 @@ import { LiveModule } from './live/live.module';
 import { ReportsModule } from './reports/reports.module';
 import { JobsModule } from './jobs/jobs.module';
 
-// Electrical Smart Monitoring & Automation Modules (Task 3)
+// Electrical Smart Monitoring & Automation Modules (Task 3 & Task 6)
 import { TopologyModule } from './topology/topology.module';
 import { IoTModule } from './iot/iot.module';
 import { TelemetryModule } from './telemetry/telemetry.module';
 import { ElectricalFaultsModule } from './electrical-faults/electrical-faults.module';
 import { MaintenanceModule } from './maintenance/maintenance.module';
+import { AutomationModule } from './automation/automation.module';
 
 // Existing user / auth modules
 import { UserModule } from './users/users.module';
@@ -71,6 +72,7 @@ import { AppController } from './app.controller';
     TelemetryModule,
     ElectricalFaultsModule,
     MaintenanceModule,
+    AutomationModule,
   ],
   controllers: [AppController],
 })
